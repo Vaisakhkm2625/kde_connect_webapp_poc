@@ -201,7 +201,7 @@
 
         /* Utilities */
         .hidden {
-            display: none;
+            display: none !important;
         }
 
         .flex-row {
@@ -444,9 +444,12 @@
         async function apiRequest(path, method = 'GET', body = null) {
             const options = {
                 method,
-                headers: { 'Content-Type': 'application/json' }
+                headers: {}
             };
-            if (body) options.body = JSON.stringify(body);
+            if (body) {
+                options.headers['Content-Type'] = 'application/json';
+                options.body = JSON.stringify(body);
+            }
 
             try {
                 const response = await fetch(API_BASE + path, options);
