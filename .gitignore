@@ -1,0 +1,11 @@
+*.db
+*.diff
+*.egg-info/
+*.log
+*.pem
+test.py
+*/__pycache__/
+build/
+dist/
+tests/
+venv/

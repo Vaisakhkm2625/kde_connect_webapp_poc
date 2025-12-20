@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konnect Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1, h2 { text-align: center; }
+        input, button, select { margin: 10px 0; padding: 8px; width: 100%; }
+        textarea { width: 100%; height: 100px; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+        .section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Konnect Dashboard</h1>
+    <p>A simple web interface for your konnect server.</p>
+
+    <div class="section">
+        <h2>Server Info</h2>
+        <button onclick="getInfo()">Get App Info</button>
+        <pre id="info-output"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Devices</h2>
+        <button onclick="listDevices()">List Devices</button>
+        <pre id="devices-output"></pre>
+        <select id="device-select"></select>
+    </div>
+
+    <div class="section">
+        <h2>Actions</h2>
+        <label>Device:</label>
+        <select id="action-device"></select>
+
+        <button onclick="pingDevice()">Send Ping</button>
+        <button onclick="ringDevice()">Ring Device</button>
+
+        <h3>Send Notification</h3>
+        <input type="text" id="notif-title" placeholder="Title (optional)">
+        <textarea id="notif-text" placeholder="Notification text (required)"></textarea>
+        <button onclick="sendNotification()">Send Notification</button>
+        <pre id="action-output"></pre>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080';  // Change if needed (e.g., 'http://your-server-ip:8080')
+
+        async function fetchJSON(path, options = {}) {
+            const response = await fetch(API_BASE + path, {
+                ...options,
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        async function getInfo() {
+            try {
+                const data = await fetchJSON('/');
+                document.getElementById('info-output').textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                document.getElementById('info-output').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function listDevices() {
+            try {
+                const devices = await fetchJSON('/device');
+                document.getElementById('devices-output').textContent = JSON.stringify(devices, null, 2);
+
+                // Populate select dropdowns
+                const selects = [document.getElementById('device-select'), document.getElementById('action-device')];
+                selects.forEach(sel => {
+                    sel.innerHTML = '<option value="">-- Select Device --</option>';
+                    devices.forEach(dev => {
+                        const opt = document.createElement('option');
+                        opt.value = dev.id;  // Use full ID; @name also works if preferred
+                        opt.textContent = `${dev.name} (${dev.id})`;
+                        sel.appendChild(opt);
+                    });
+                });
+            } catch (e) {
+                document.getElementById('devices-output').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        function getSelectedDevice() {
+            const id = document.getElementById('action-device').value;
+            if (!id) throw new Error('Select a device first');
+            return id;
+        }
+
+        async function pingDevice() {
+            try {
+                const id = getSelectedDevice();
+                await fetchJSON(`/ping/${id}`, { method: 'POST' });
+                document.getElementById('action-output').textContent = 'Ping sent!';
+            } catch (e) {
+                document.getElementById('action-output').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function ringDevice() {
+            try {
+                const id = getSelectedDevice();
+                await fetchJSON(`/ring/${id}`, { method: 'POST' });
+                document.getElementById('action-output').textContent = 'Ring sent!';
+            } catch (e) {
+                document.getElementById('action-output').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function sendNotification() {
+            try {
+                const id = getSelectedDevice();
+                const title = document.getElementById('notif-title').value || 'Notification';
+                const text = document.getElementById('notif-text').value;
+                if (!text) throw new Error('Text is required');
+                await fetchJSON(`/notification/${id}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ title, text })
+                });
+                document.getElementById('action-output').textContent = 'Notification sent!';
+            } catch (e) {
+                document.getElementById('action-output').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        // Auto-load devices on page load
+        window.onload = listDevices;
+    </script>
+</body>
+</html>
