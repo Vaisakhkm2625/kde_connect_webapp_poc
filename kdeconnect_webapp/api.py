@@ -75,14 +75,14 @@ class API(Resource):
 
   def render(self, request):
     request.setHeader(b"content-type", b"application/json")
-    uri = request.uri.decode()
+    path = "/" + "/".join([x.decode() for x in request.postpath])
     method = request.method.decode()
     content = request.content.read().decode() if request.getHeader("content-length") else "{}"
 
-    debug(f"ReqHTTP({method} {uri}) - Body({content})")
+    debug(f"ReqHTTP({method} {path}) - Body({content})")
 
     try:
-      response, code = self.process(method, uri, content)
+      response, code = self.process(method, path, content)
       response["success"] = True
     except Exception as e:
       if isinstance(e, ApiError):
@@ -104,30 +104,30 @@ class API(Resource):
     debug(f"RespHTTP({code}) - Body({response})")
 
     if isinstance(address, IPv4Address):
-      info(f"{address.host}:{address.port} - {method} {uri} - {code}")
+      info(f"{address.host}:{address.port} - {method} {path} - {code}")
     else:
-      info(f"unix:socket - {method} {uri} - {code}")
+      info(f"unix:socket - {method} {path} - {code}")
 
     if debug:
       return dumps(response, indent=2).encode() + b"\n"
     else:
       return dumps(response).encode()
 
-  def process(self, method, uri, content):
-    if uri == "/" and method == "GET":
+  def process(self, method, path, content):
+    if path == "/" and method == "GET":
       return self._handleInfo()
-    elif uri == "/" and method == "PUT":
+    elif path == "/" and method == "PUT":
       return self._handleAnnounce()
-    elif uri == "/device" and method == "GET":
+    elif path == "/device" and method == "GET":
       return self._handleDevices()
-    elif uri == "/command" and method == "GET":
+    elif path == "/command" and method == "GET":
       return self._handleCommands()
-    elif uri == "/notification" and method == "GET":
+    elif path == "/notification" and method == "GET":
       return self._handleNotifications()
-    elif uri == "/version" and method == "GET":
+    elif path == "/version" and method == "GET":
       return self._handleVersion()
 
-    matches = match(self.PATTERN, uri)
+    matches = match(self.PATTERN, path)
 
     if not matches:
       raise NotImplementedError2()

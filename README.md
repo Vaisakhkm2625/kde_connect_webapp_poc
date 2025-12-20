@@ -1,4 +1,4 @@
-# KDE Connect Webapp - headless kde connect
+# KDE Connect Webapp 
 
 KDE Connect Webapp is based on the [KDE Connect](https://community.kde.org/KDEConnect) protocol and allows a non-interactive environment (headless server) to send notifications to your devices via Rest API or a *simple* CLI
 

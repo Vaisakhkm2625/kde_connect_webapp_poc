@@ -3,13 +3,15 @@
 from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser
 from logging import DEBUG, INFO, WARNING, basicConfig, getLogger, info
 from os import makedirs
-from os.path import expanduser, expandvars, join
+from os.path import abspath, dirname, expanduser, expandvars, join
 from platform import node
 from uuid import uuid4
 
 from OpenSSL.crypto import Error
 from twisted.internet import reactor
 from twisted.web.server import Site
+from twisted.web.resource import Resource
+from twisted.web.static import File
 
 from kdeconnect_webapp import __version__
 from kdeconnect_webapp.api import API
@@ -58,7 +60,11 @@ def start(args):
 
   reactor.listenTCP(args.service_port, konnect, interface="0.0.0.0")
   reactor.listenUDP(args.discovery_port, discovery, interface="0.0.0.0")
-  site = Site(API(konnect, discovery, database, args.debug))
+
+  project_root = dirname(dirname(abspath(__file__)))
+  root = File(project_root)
+  root.putChild(b"api", API(konnect, discovery, database, args.debug))
+  site = Site(root)
 
   if args.admin_port.isdigit():
     reactor.listenTCP(int(args.admin_port), site, interface="127.0.0.1")
