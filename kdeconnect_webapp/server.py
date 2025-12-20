@@ -17,7 +17,7 @@ from kdeconnect_webapp import __version__
 from kdeconnect_webapp.api import API
 from kdeconnect_webapp.certificate import Certificate
 from kdeconnect_webapp.database import Database
-from kdeconnect_webapp.factories import KonnectFactory
+from kdeconnect_webapp.factories import WebappFactory
 from kdeconnect_webapp.protocols import MAX_TCP_PORT, Discovery
 
 
@@ -53,17 +53,17 @@ def start(args):
     context = options.getContext()
     context.set_keylog_callback(keylog)
 
-  konnect = KonnectFactory(database, identifier, args.name, options)
+  webapp = WebappFactory(database, identifier, args.name, options)
   discovery = Discovery(identifier, args.name, args.service_port)
 
   info(f"Starting kdeconnect-webapp-d {__version__} as {args.name}")
 
-  reactor.listenTCP(args.service_port, konnect, interface="0.0.0.0")
+  reactor.listenTCP(args.service_port, webapp, interface="0.0.0.0")
   reactor.listenUDP(args.discovery_port, discovery, interface="0.0.0.0")
 
   project_root = dirname(dirname(abspath(__file__)))
   root = File(project_root)
-  root.putChild(b"api", API(konnect, discovery, database, args.debug))
+  root.putChild(b"api", API(webapp, discovery, database, args.debug))
   site = Site(root)
 
   if args.admin_port.isdigit():

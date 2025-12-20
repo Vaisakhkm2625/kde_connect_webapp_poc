@@ -29,7 +29,7 @@ REQUESTED = 2
 PAIRED = 3
 
 
-class Konnect(LineReceiver):
+class Webapp(LineReceiver):
   delimiter = b"\n"
   status = NOT_PAIRED
   identifier = None

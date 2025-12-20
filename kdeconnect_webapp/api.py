@@ -52,22 +52,22 @@ class API(Resource):
   isLeaf = True
   PATTERN = r"^\/(?P<res>[a-z]+)\/(?P<dev>@?.+?)((?:\/)(?P<key>=?.+?))?$"
 
-  def __init__(self, konnect, discovery, database, debug):
+  def __init__(self, webapp, discovery, database, debug):
     super().__init__()
-    self.konnect = konnect
+    self.webapp = webapp
     self.discovery = discovery
     self.database = database
     self.debug = debug
     self.listeners = {}
 
-    self.temp_dir = join(gettempdir(), "kdeconnect_webapp_" + konnect.name)
+    self.temp_dir = join(gettempdir(), "kdeconnect_webapp_" + webapp.name)
     makedirs(self.temp_dir, exist_ok=True)
 
   def _getDeviceId(self, item):
     key = "name" if item[0] == "@" else "identifier"
     value = unquote_plus(item[1:] if key == "name" else item)
 
-    for device in self.konnect.getDevices().values():
+    for device in self.webapp.getDevices().values():
       if device[key] == value:
         return device["identifier"]
 
@@ -133,7 +133,7 @@ class API(Resource):
       raise NotImplementedError2()
 
     try:
-      data = loads(content)
+      data = loads(content) if content else {}
     except JSONDecodeError as e:
       raise UnserializationError(e)
 
@@ -148,7 +148,7 @@ class API(Resource):
     if not self.database.isDeviceTrusted(identifier) and checks[0]:
       raise DeviceNotTrustedError()
 
-    client = self.konnect.findClient(identifier)
+    client = self.webapp.findClient(identifier)
 
     if not client and checks[1]:
       raise DeviceNotReachableError()
@@ -190,7 +190,7 @@ class API(Resource):
     raise NotImplementedError2()
 
   def _handleInfo(self):
-    return {"identifier": self.konnect.identifier, "device": self.konnect.name,
+    return {"identifier": self.webapp.identifier, "device": self.webapp.name,
             "server": "KDE Connect Webapp " + __version__}, 200
 
   def _handleVersion(self):
@@ -204,7 +204,7 @@ class API(Resource):
       raise ApiError("failed to broadcast identity packet", 500)
 
   def _handleDevices(self):
-    return {"devices": list(self.konnect.getDevices().values())}, 200
+    return {"devices": list(self.webapp.getDevices().values())}, 200
 
   def _handleCommands(self):
     return {"commands": self.database.listAllCommands()}, 200
@@ -222,7 +222,7 @@ class API(Resource):
     return {}, 200
 
   def _handleGetDevice(self, identifier):
-    for device in self.konnect.getDevices().values():
+    for device in self.webapp.getDevices().values():
       if device["identifier"] == identifier:
         return device, 200
 
@@ -285,7 +285,7 @@ class API(Resource):
 
     for port in range(MIN_XFER_PORT, MAX_XFER_PORT):
       try:
-        listener = reactor.listenSSL(port, factory, self.konnect.options, backlog=0, interface="0.0.0.0")
+        listener = reactor.listenSSL(port, factory, self.webapp.options, backlog=0, interface="0.0.0.0")
         debug(f"Transfer listening on port {port}")
         factory.port = port
         self.listeners[port] = listener

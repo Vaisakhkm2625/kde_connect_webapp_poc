@@ -1,10 +1,10 @@
 from twisted.internet.protocol import Factory
 
-from kdeconnect_webapp.protocols import Konnect
+from kdeconnect_webapp.protocols import Webapp
 
 
-class KonnectFactory(Factory):
-  protocol = Konnect
+class WebappFactory(Factory):
+  protocol = Webapp
   clients = set()
 
   def __init__(self, database, identifier, name, options):
