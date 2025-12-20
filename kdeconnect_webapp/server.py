@@ -61,8 +61,9 @@ def start(args):
   reactor.listenTCP(args.service_port, webapp, interface="0.0.0.0")
   reactor.listenUDP(args.discovery_port, discovery, interface="0.0.0.0")
 
-  project_root = dirname(dirname(abspath(__file__)))
-  root = File(project_root)
+  # Serve frontend from webapp directory inside the package
+  webapp_root = join(dirname(abspath(__file__)), "webapp")
+  root = File(webapp_root)
   root.putChild(b"api", API(webapp, discovery, database, args.debug))
   site = Site(root)
 

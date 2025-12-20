@@ -1,0 +1,234 @@
+:root {
+    --primary: #3daee9;
+    --bg: #1b1e20;
+    --card-bg: #232629;
+    --text: #eff0f1;
+    --text-dim: #bdc3c7;
+    --border: #31363b;
+    --danger: #ed1515;
+    --success: #11d116;
+    --warning: #f67400;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+aside {
+    width: 260px;
+    background-color: var(--card-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    position: fixed;
+    height: 100vh;
+}
+
+.logo {
+    padding: 0 20px 20px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav li {
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+}
+
+nav li:hover {
+    background-color: var(--border);
+    color: var(--text);
+}
+
+nav li.active {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Main Content */
+main {
+    margin-left: 260px;
+    flex: 1;
+    padding: 40px;
+    max-width: 1200px;
+}
+
+h1,
+h2,
+h3 {
+    margin-top: 0;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Inputs & Buttons */
+input,
+select,
+textarea {
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+button.secondary {
+    background-color: var(--border);
+}
+
+button.danger {
+    background-color: var(--danger);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Device List */
+.device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.device-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-badge {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--border);
+}
+
+.status-online {
+    background: var(--success);
+    color: black;
+}
+
+.status-offline {
+    background: var(--danger);
+}
+
+/* Tables and Lists */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+.flex-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+pre {
+    background: var(--bg);
+    padding: 12px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    color: var(--primary);
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 500px;
+    border: 1px solid var(--border);
+}
