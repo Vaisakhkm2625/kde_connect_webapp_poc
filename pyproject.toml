@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "konnect"
+name = "kdeconnect-webapp"
 authors = [{name = "metallkopf"}]
 description = "Headless KDE Connect"
 requires-python = ">=3.10"
@@ -11,7 +11,7 @@ keywords = ["headless", "kdeconnect", "kde-connect", "server"]
 license = "GPL-2.0-only"
 readme = {file = "README.md", content-type = "text/markdown"}
 dynamic = ["version"]
-urls = {Source = "https://github.com/metallkopf/konnect"}
+urls = {Source = "https://github.com/metallkopf/kdeconnect-webapp"}
 dependencies = [
   "pillow",
   "pyopenssl",
@@ -37,14 +37,14 @@ classifiers = [
 devel = ["build", "flake8", "isort", "pytest", "twine"]
 
 [project.scripts]
-konnect = "konnect.client:main"
-konnectd = "konnect.server:main"
+kdeconnect-webapp = "kdeconnect_webapp.client:main"
+kdeconnect-webapp-d = "kdeconnect_webapp.server:main"
 
 [tool.setuptools]
-packages = ["konnect"]
+packages = ["kdeconnect_webapp"]
 
 [tool.setuptools.dynamic]
-version = {attr = "konnect.__version__"}
+version = {attr = "kdeconnect_webapp.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

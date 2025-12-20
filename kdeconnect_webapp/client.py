@@ -165,7 +165,7 @@ def query(args):
 
 
 def main():
-  parser = ArgumentParser(prog="konnect", add_help=False, allow_abbrev=False)
+  parser = ArgumentParser(prog="kdeconnect-webapp", add_help=False, allow_abbrev=False)
   parser.add_argument("--port", default=8080, type=int, help="Port running the admin interface")
   parser.add_argument("--debug", action="store_true", help="Show debug messages")
 

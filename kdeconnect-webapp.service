@@ -1,0 +1,14 @@
+[Unit]
+Description=KDE Connect Webapp
+After=network.target
+Requires=network.target
+
+[Service]
+User=user
+Restart=always
+Type=simple
+WorkingDirectory=/home/user/kdeconnect-webapp
+ExecStart=/home/user/kdeconnect-webapp/venv/bin/kdeconnect-webapp-d --discovery-port 1716
+
+[Install]
+WantedBy=multi-user.target

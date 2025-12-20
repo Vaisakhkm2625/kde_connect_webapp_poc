@@ -15,7 +15,7 @@ from twisted.internet.ssl import Certificate
 from twisted.protocols.basic import LineReceiver
 from twisted.protocols.policies import TimeoutMixin
 
-from konnect.packet import Packet, PacketType
+from kdeconnect_webapp.packet import Packet, PacketType
 
 
 MIN_TCP_PORT = 1716

@@ -19,10 +19,10 @@ from twisted.internet.error import CannotListenError
 from twisted.internet.protocol import Factory
 from twisted.web.resource import Resource
 
-from konnect import __version__
-from konnect.exceptions import ApiError, DeviceNotReachableError, DeviceNotTrustedError, NotImplementedError2, \
+from kdeconnect_webapp import __version__
+from kdeconnect_webapp.exceptions import ApiError, DeviceNotReachableError, DeviceNotTrustedError, NotImplementedError2, \
   UnserializationError
-from konnect.protocols import MAX_TCP_PORT, MIN_TCP_PORT, ShareSend
+from kdeconnect_webapp.protocols import MAX_TCP_PORT, MIN_TCP_PORT, ShareSend
 
 
 MIN_XFER_PORT = MIN_TCP_PORT + 1
@@ -60,7 +60,7 @@ class API(Resource):
     self.debug = debug
     self.listeners = {}
 
-    self.temp_dir = join(gettempdir(), "konnect_" + konnect.name)
+    self.temp_dir = join(gettempdir(), "kdeconnect_webapp_" + konnect.name)
     makedirs(self.temp_dir, exist_ok=True)
 
   def _getDeviceId(self, item):
@@ -191,7 +191,7 @@ class API(Resource):
 
   def _handleInfo(self):
     return {"identifier": self.konnect.identifier, "device": self.konnect.name,
-            "server": "Konnect " + __version__}, 200
+            "server": "KDE Connect Webapp " + __version__}, 200
 
   def _handleVersion(self):
     return {"version": __version__}, 200

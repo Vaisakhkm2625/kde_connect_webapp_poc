@@ -1,6 +1,6 @@
 from twisted.internet.protocol import Factory
 
-from konnect.protocols import Konnect
+from kdeconnect_webapp.protocols import Konnect
 
 
 class KonnectFactory(Factory):

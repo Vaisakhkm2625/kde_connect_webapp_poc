@@ -26,7 +26,7 @@ pkgs.mkShell {
 #   pip install --upgrade pip
 #   pip install build flake8 isort pytest twine
 #
-#   echo "konnect environment ready! Run 'konnect' or 'konnectd' after installing the package."
+#   echo "kdeconnect-webapp environment ready! Run 'kdeconnect-webapp' or 'kdeconnect-webapp-d' after installing the package."
 #   echo "To install the package locally: pip install -e ."
 # '';
 }

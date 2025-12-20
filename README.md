@@ -1,12 +1,12 @@
-# Konnect - headless kde connect
+# KDE Connect Webapp - headless kde connect
 
-Konnect is based on the [KDE Connect](https://community.kde.org/KDEConnect) protocol and allows a non-interactive environment (headless server) to send notifications to your devices via Rest API or a *simple* CLI
+KDE Connect Webapp is based on the [KDE Connect](https://community.kde.org/KDEConnect) protocol and allows a non-interactive environment (headless server) to send notifications to your devices via Rest API or a *simple* CLI
 
 > There are issues with the current versions of KDE Connect, see Troubleshooting.
 
 > Breaking changes in 0.4.0 `--admin-bind` and `--admin-socket` merged into `--admin-port`, `--receiver` is now `--discovery-port 1716`, `--transfer-port` and `--max-transfer-ports` has been removed as ports are allocated automatically, and `--service` has been deprecated and his systemd dependency removed.
 
-> Breaking changes between konnect versions 0.1.x and 0.2.x on the client tool and rest api.
+> Breaking changes between kdeconnect-webapp versions 0.1.x and 0.2.x on the client tool and rest api.
 
 ## Supported functionality (plugins):
 
@@ -24,10 +24,10 @@ Konnect is based on the [KDE Connect](https://community.kde.org/KDEConnect) prot
 python -m venv venv
 
 # Default install (wheels)
-venv/bin/pip install https://github.com/metallkopf/konnect/releases/download/0.4.0/konnect-0.4.0-py3-none-any.whl
+venv/bin/pip install https://github.com/metallkopf/kdeconnect-webapp/releases/download/0.4.0/kdeconnect_webapp-0.4.0-py3-none-any.whl
 
 # From source
-venv/bin/pip install git+https://github.com/metallkopf/konnect.git@master#egg=konnect
+venv/bin/pip install git+https://github.com/metallkopf/kdeconnect-webapp.git@master#egg=kdeconnect-webapp
 ```
 
 ## Server
@@ -35,11 +35,11 @@ venv/bin/pip install git+https://github.com/metallkopf/konnect.git@master#egg=ko
 ### Server options
 
 ```bash
-venv/bin/konnectd --help
+venv/bin/kdeconnect-webapp-d --help
 ```
 
 ```
-usage: konnectd [--name NAME] [--debug] [--discovery-port PORT] [--service-port PORT] [--admin-port PORT] [--config-dir DIR] [--timestamps] [--version]
+usage: kdeconnect-webapp-d [--name NAME] [--debug] [--discovery-port PORT] [--service-port PORT] [--admin-port PORT] [--config-dir DIR] [--timestamps] [--version]
 
 options:
   --name NAME           Device name (default: HOSTNAME)
@@ -48,7 +48,7 @@ options:
                         Discovery port (default: 1764)
   --service-port PORT   Service port (default: 1764)
   --admin-port PORT     API (tcp) port or unix socket (default: 8080)
-  --config-dir DIR      Config directory (default: ~/.config/konnect)
+  --config-dir DIR      Config directory (default: ~/.config/kdeconnect-webapp)
   --timestamps          Show timestamps (default: False)
   --version             Version information (default: False)
 ```
@@ -57,22 +57,22 @@ options:
 
 ```bash
 # With KDE Connect installed (admin interface by default on port 8080)
-venv/bin/konnectd --name Test
+venv/bin/kdeconnect-webapp-d --name Test
 
 # With KDE Connect installed (bind to socket)
-venv/bin/konnectd --name Test --admin-port /run/user/1000/konnectd.sock
+venv/bin/kdeconnect-webapp-d --name Test --admin-port /run/user/1000/kdeconnect-webapp-d.sock
 
 # Without KDE Connect installed (listen for announce)
-venv/bin/konnectd --name Test --discovery-port 1716
+venv/bin/kdeconnect-webapp-d --name Test --discovery-port 1716
 ```
 
 ### Run as service
 
-Create a file named `konnect.service` in `/etc/systemd/system`, change the value `User` and `WorkingDirectory` accordingly and the execute the following commands
+Create a file named `kdeconnect-webapp.service` in `/etc/systemd/system`, change the value `User` and `WorkingDirectory` accordingly and the execute the following commands
 
 ```ini
 [Unit]
-Description=Konnect
+Description=KDE Connect Webapp
 After=network.target
 Requires=network.target
 
@@ -80,8 +80,8 @@ Requires=network.target
 User=user
 Restart=always
 Type=simple
-WorkingDirectory=/home/user/konnect
-ExecStart=/home/user/konnect/venv/bin/konnectd --discovery-port 1716
+WorkingDirectory=/home/user/kdeconnect-webapp
+ExecStart=/home/user/kdeconnect-webapp/venv/bin/kdeconnect-webapp-d --discovery-port 1716
 
 [Install]
 WantedBy=multi-user.target
@@ -92,10 +92,10 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 
 # Start service
-sudo systemctl start konnect
+sudo systemctl start kdeconnect-webapp
 
 # Start on boot
-sudo systemctl enable konnect
+sudo systemctl enable kdeconnect-webapp
 ```
 
 ### Rest API
@@ -130,11 +130,11 @@ This utility can be used alone but requires the packages `requests` and `PIL` to
 ### Client usage
 
 ```bash
-./venv/bin/konnect help
+./venv/bin/kdeconnect-webapp help
 ```
 
 ```
-usage: konnect [--port PORT] [--debug] {announce,command,commands,custom,devices,exec,info,notifications,notification,pair,ping,receive,ring,unpair,version,help} ...
+usage: kdeconnect-webapp [--port PORT] [--debug] {announce,command,commands,custom,devices,exec,info,notifications,notification,pair,ping,receive,ring,unpair,version,help} ...
 
 options:
   --port PORT           Port running the admin interface
@@ -162,7 +162,7 @@ actions:
 ### List devices
 
 ```bash
-./venv/bin/konnect devices
+./venv/bin/kdeconnect-webapp devices
 ```
 
 ```yaml
@@ -192,23 +192,23 @@ devices:
 ### Pair device
 
 ```bash
-./venv/bin/konnect pair --device @computer
+./venv/bin/kdeconnect-webapp pair --device @computer
 # or
-./venv/bin/konnect pair --device f81d4fae-7dec-11d0-a765-00a0c91e6bf6
+./venv/bin/kdeconnect-webapp pair --device f81d4fae-7dec-11d0-a765-00a0c91e6bf6
 ```
 
 ### Ping device
 
 ```bash
-./venv/bin/konnect ping --device @computer
+./venv/bin/kdeconnect-webapp ping --device @computer
 # or
-./venv/bin/konnect pair --device f81d4fae-7dec-11d0-a765-00a0c91e6bf6
+./venv/bin/kdeconnect-webapp pair --device f81d4fae-7dec-11d0-a765-00a0c91e6bf6
 ```
 
 ### Send notification
 
 ```bash
-./venv/bin/konnect notification --device @computer --application "Package Manager" \
+./venv/bin/kdeconnect-webapp notification --device @computer --application "Package Manager" \
   --title Maintenance --text "There are updates available!" --reference update \
   --icon /usr/share/icons/oxygen/base/32x32/apps/system-software-update.png
 ```
@@ -220,21 +220,21 @@ key: update
 ### Dismiss notification
 
 ```bash
-./venv/bin/konnect notification --device @computer --reference update --delete
+./venv/bin/kdeconnect-webapp notification --device @computer --reference update --delete
 ```
 
 ### Execute (remote) command
 
 ```bash
-./venv/bin/konnect exec --device @computer --key =kernel
+./venv/bin/kdeconnect-webapp exec --device @computer --key =kernel
 # or
-./venv/bin/konnect exec --device @computer --key 00112233-4455-6677-8899-aabbccddeeff
+./venv/bin/kdeconnect-webapp exec --device @computer --key 00112233-4455-6677-8899-aabbccddeeff
 ```
 
 ### Add (local) command
 
 ```bash
-./venv/bin/konnect command --device @computer --name reboot --command "sudo reboot"
+./venv/bin/kdeconnect-webapp command --device @computer --name reboot --command "sudo reboot"
 ```
 
 ```yaml
@@ -244,7 +244,7 @@ key: 03000200-0400-0500-0006-000700080009
 ### List (local) commands
 
 ```bash
-./venv/bin/konnect commands
+./venv/bin/kdeconnect-webapp commands
 ```
 
 ```yaml
@@ -258,7 +258,7 @@ key: 03000200-0400-0500-0006-000700080009
 ### Receive (accept) files
 
 ```bash
-./venv/bin/konnect receive --device @computer --path ~/Downloads/computer
+./venv/bin/kdeconnect-webapp receive --device @computer --path ~/Downloads/computer
 ```
 
 ## Troubleshooting
@@ -267,7 +267,7 @@ key: 03000200-0400-0500-0006-000700080009
 
 Starting with desktop versions 25.03.80 and android 1.33.0, the protocol version was increased, which had the side effect that untrusted devices running older versions of the software cannot be found.
 
-- For desktop: if you can't find your device, hit "Refresh" on KDE Connect in System Settings. Konnect will send an identity packet matching that protocol version.
+- For desktop: if you can't find your device, hit "Refresh" on KDE Connect in System Settings. KDE Connect Webapp will send an identity packet matching that protocol version.
 - For android: if installed initially with a version older than 1.24.0 you might need to delete the app data and re-pair your devices. The app device id is too short for the current protocol.
 
 ### Read how to open firewall ports on
@@ -279,9 +279,9 @@ Starting with desktop versions 25.03.80 and android 1.33.0, the protocol version
 ### Code Style
 
 ```bash
-venv/bin/isort --diff konnect/*.py
+venv/bin/isort --diff kdeconnect_webapp/*.py
 
-venv/bin/flake8 konnect/*.py
+venv/bin/flake8 kdeconnect_webapp/*.py
 
 venv/bin/pytest -vv
 ```

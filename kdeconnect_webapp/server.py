@@ -11,12 +11,12 @@ from OpenSSL.crypto import Error
 from twisted.internet import reactor
 from twisted.web.server import Site
 
-from konnect import __version__
-from konnect.api import API
-from konnect.certificate import Certificate
-from konnect.database import Database
-from konnect.factories import KonnectFactory
-from konnect.protocols import MAX_TCP_PORT, Discovery
+from kdeconnect_webapp import __version__
+from kdeconnect_webapp.api import API
+from kdeconnect_webapp.certificate import Certificate
+from kdeconnect_webapp.database import Database
+from kdeconnect_webapp.factories import KonnectFactory
+from kdeconnect_webapp.protocols import MAX_TCP_PORT, Discovery
 
 
 def start(args):
@@ -33,7 +33,7 @@ def start(args):
 
   args.config_dir = expanduser(expandvars(args.config_dir))
   makedirs(args.config_dir, exist_ok=True)
-  database = Database(join(args.config_dir, "konnect.db"))
+  database = Database(join(args.config_dir, "kdeconnect-webapp.db"))
 
   try:
     options = Certificate.load_options(args.config_dir)
@@ -54,7 +54,7 @@ def start(args):
   konnect = KonnectFactory(database, identifier, args.name, options)
   discovery = Discovery(identifier, args.name, args.service_port)
 
-  info(f"Starting Konnectd {__version__} as {args.name}")
+  info(f"Starting kdeconnect-webapp-d {__version__} as {args.name}")
 
   reactor.listenTCP(args.service_port, konnect, interface="0.0.0.0")
   reactor.listenUDP(args.discovery_port, discovery, interface="0.0.0.0")
@@ -69,13 +69,13 @@ def start(args):
 
 
 def main():
-  parser = ArgumentParser(prog="konnectd", add_help=False, allow_abbrev=False, formatter_class=ArgumentDefaultsHelpFormatter)
+  parser = ArgumentParser(prog="kdeconnect-webapp-d", add_help=False, allow_abbrev=False, formatter_class=ArgumentDefaultsHelpFormatter)
   parser.add_argument("--name", default=node(), help="Device name")
   parser.add_argument("--debug", action="store_true", default=False, help="Show debug messages")
   parser.add_argument("--discovery-port", metavar="PORT", default=MAX_TCP_PORT, type=int, help="Discovery port")
   parser.add_argument("--service-port", metavar="PORT", default=MAX_TCP_PORT, type=int, help="Service port")
   parser.add_argument("--admin-port", metavar="PORT", default="8080", type=str, help="API (tcp) port or unix socket")
-  parser.add_argument("--config-dir", metavar="DIR", default="~/.config/konnect", help="Config directory")
+  parser.add_argument("--config-dir", metavar="DIR", default="~/.config/kdeconnect-webapp", help="Config directory")
   parser.add_argument("--timestamps", action="store_true", default=False, help="Show timestamps")
   parser.add_argument("--sslkeylog", action="store", default=None, const="~/sslkey.log", nargs="?", help=SUPPRESS)
   parser.add_argument("--version", action="store_true", help="Version information")
@@ -86,7 +86,7 @@ def main():
   if args.help:
     parser.print_help()
   elif args.version:
-    print(f"Konnectd {__version__}")
+    print(f"kdeconnect-webapp-d {__version__}")
   else:
     start(args)
 
