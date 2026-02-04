@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+@theme {
+  --color-kde-blue: #3daee9;
+  --color-kde-bg: #1b1e20;
+  --color-kde-card: #232629;
+  --color-kde-border: #31363b;
+  --color-kde-text: #eff0f1;
+  --color-kde-text-dim: #bdc3c7;
+  --color-kde-danger: #ed1515;
+  --color-kde-success: #11d116;
+  --color-kde-warning: #f67400;
+
+  --shadow-window: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-taskbar: 0 -2px 10px rgba(0, 0, 0, 0.3);
+
+  --font-sans: Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  @apply bg-kde-bg text-kde-text overflow-hidden h-screen w-screen font-sans antialiased;
+}

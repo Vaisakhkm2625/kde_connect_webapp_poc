@@ -12,6 +12,7 @@ from requests.exceptions import ConnectionError
 
 
 def print_out(data, level=0, parent=None):  # FIXME
+
   if isinstance(data, dict):
     for index, (key, value) in enumerate(data.items()):
       if key == "success" and level == 0:
@@ -28,6 +29,7 @@ def print_out(data, level=0, parent=None):  # FIXME
           print(f"{''.ljust(level - 2)}- {key}: {value}")
         else:
           print(f"{''.ljust(level)}{key}: {value}")
+
   elif isinstance(data, list):
     for value in data:
       if isinstance(value, dict):
@@ -43,6 +45,7 @@ def query(args):
 
   if args.action == "info":
     method = "GET"
+
   elif args.action == "version":
     method = "GET"
     url = join(url, "version")

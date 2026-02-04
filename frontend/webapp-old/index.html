@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDE Connect Webapp Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <aside>
+        <div class="logo">
+            <span>KDE Connect</span>
+        </div>
+        <nav>
+            <ul>
+                <li onclick="showSection('dashboard')" id="nav-dashboard" class="active">Dashboard</li>
+                <li onclick="showSection('devices')" id="nav-devices">Devices</li>
+                <li onclick="showSection('commands')" id="nav-commands">Commands</li>
+                <li onclick="showSection('notifications')" id="nav-notifications">Notifications</li>
+                <li onclick="showSection('advanced')" id="nav-advanced">Advanced</li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main>
+        <!-- Dashboard Section -->
+        <section id="section-dashboard">
+            <h1>Dashboard</h1>
+            <div class="card">
+                <h2>Server Information</h2>
+                <div id="server-info">Loading...</div>
+                <button onclick="getServerInfo()" style="margin-top: 15px;">Refresh Info</button>
+                <button onclick="broadcastIdentity()" class="secondary">Broadcast Identity</button>
+            </div>
+
+            <div class="card">
+                <h2>Quick Actions</h2>
+                <div class="flex-row">
+                    <button onclick="showSection('devices')">View Devices</button>
+                    <button onclick="showSection('notifications')">Send Notification</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Devices Section -->
+        <section id="section-devices" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1>Devices</h1>
+                <button onclick="refreshDevices()">Refresh List</button>
+            </div>
+            <div id="device-list" class="device-grid">
+                <!-- Devices will be injected here -->
+            </div>
+        </section>
+
+        <!-- Commands Section -->
+        <section id="section-commands" class="hidden">
+            <h1>Commands</h1>
+
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Local Commands</h2>
+                    <button onclick="openAddCommandModal()">Add Command</button>
+                </div>
+                <table id="local-commands-table">
+                    <thead>
+                        <tr>
+                            <th>Device Name</th>
+                            <th>Name</th>
+                            <th>Command</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Execute Remote Command</h2>
+                <label>Select Device:</label>
+                <select id="remote-cmd-device" onchange="loadRemoteCommands()"></select>
+                <label>Select Command:</label>
+                <select id="remote-cmd-list"></select>
+                <button onclick="executeRemoteCommand()">Execute</button>
+            </div>
+        </section>
+
+        <!-- Notifications Section -->
+        <section id="section-notifications" class="hidden">
+            <h1>Notifications</h1>
+
+            <div class="card">
+                <h2>Send New Notification</h2>
+                <label>Target Device:</label>
+                <select id="notif-device"></select>
+                <label>Title:</label>
+                <input type="text" id="notif-title" placeholder="e.g., Desktop Alert">
+                <label>Application:</label>
+                <input type="text" id="notif-app" placeholder="e.g., Web Dashboard" value="Web Dashboard">
+                <label>Message:</label>
+                <textarea id="notif-text" placeholder="Write your message here..."></textarea>
+                <label>Icon path (Optional):</label>
+                <input type="text" id="notif-icon" placeholder="/path/to/icon.png">
+                <button onclick="sendNotification()">Send Notification</button>
+            </div>
+
+            <div class="card">
+                <h2>Active Notifications</h2>
+                <table id="notifications-table">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Title</th>
+                            <th>Text</th>
+                            <th>Reference</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Advanced Section -->
+        <section id="section-advanced" class="hidden">
+            <h1>Advanced</h1>
+
+            <div class="card">
+                <h2>Receive Files Configuration</h2>
+                <label>Target Device:</label>
+                <select id="share-device"></select>
+                <label>Download Path:</label>
+                <input type="text" id="share-path" placeholder="e.g., ~/Downloads/kdeconnect">
+                <p style="font-size: 12px; color: var(--text-dim);">Leave empty to stop receiving files for this device.
+                </p>
+                <button onclick="updateSharePath()">Update Config</button>
+            </div>
+
+            <div class="card">
+                <h2>Send Custom Packet</h2>
+                <label>Target Device:</label>
+                <select id="custom-device"></select>
+                <label>Packet Data (JSON):</label>
+                <textarea id="custom-json" placeholder='{ "type": "kdeconnect.ping", "body": {} }'
+                    style="height: 150px; font-family: monospace;"></textarea>
+                <button onclick="sendCustomPacket()">Send Packet</button>
+            </div>
+
+            <div class="card">
+                <h2>App Version</h2>
+                <pre id="version-output"></pre>
+                <button onclick="getVersion()">Get Version</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-container" class="overlay hidden">
+        <div class="modal" id="command-modal">
+            <h2 id="modal-title">Add Local Command</h2>
+            <label>Target Device:</label>
+            <select id="modal-cmd-device"></select>
+            <label>Display Name:</label>
+            <input type="text" id="modal-cmd-name" placeholder="e.g., Reboot">
+            <label>System Command:</label>
+            <input type="text" id="modal-cmd-exec" placeholder="e.g., sudo reboot">
+            <input type="hidden" id="modal-cmd-key">
+
+            <div class="flex-row" style="margin-top: 20px; justify-content: flex-end;">
+                <button class="secondary" onclick="closeModal()">Cancel</button>
+                <button id="modal-cmd-save" onclick="saveCommand()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js" defer></script>
+
+</body>
+
+</html>
