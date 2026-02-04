@@ -62,9 +62,19 @@ def start(args):
   reactor.listenUDP(args.discovery_port, discovery, interface="0.0.0.0")
 
   # Serve frontend from webapp directory inside the package
+  repo_root = dirname(dirname(abspath(__file__)))
   webapp_root = join(dirname(abspath(__file__)), "webapp")
-  root = File(webapp_root)
+  new_webapp_root = join(repo_root, "frontend/webapp-sveltekit/build")
+
+  # Serve new SvelteKit app at root
+  root = File(new_webapp_root)
+  
+  # Mount API
   root.putChild(b"api", API(webapp, discovery, database, args.debug))
+  
+  # Mount old webapp at /old
+  root.putChild(b"old", File(webapp_root))
+
   site = Site(root)
 
   if args.admin_port.isdigit():
