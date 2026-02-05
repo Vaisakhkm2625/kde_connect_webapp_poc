@@ -313,4 +313,4 @@ if __name__ == '__main__':
         print("WARNING: This application likely needs root privileges to manage network namespaces.")
         print("Try running with: sudo python3 app.py")
         
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)

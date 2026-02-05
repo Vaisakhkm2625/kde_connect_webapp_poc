@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import sys
 import time
@@ -8,11 +7,12 @@ import logging
 from pathlib import Path
 import uuid
 import re
-import hashlib
 
 # Configuration defaults (can be overridden)
 SERVER_PORT = 8081
-
+NS_IPV4 = "192.168.200.2/24"
+HOST_IPV4 = "192.168.200.1/24"
+# Interfaces will be dynamically named based on namespace to avoid collisions
 
 class IsolationManager:
     def __init__(self, client_id, client_secret, tailnet):
@@ -34,7 +34,7 @@ class IsolationManager:
     def get_auth_key(self, tags=None):
         """Fetches an OAuth token and creates a tagged ephemeral Auth Key."""
         if tags is None:
-            tags = ["tag:kcadmin", "tag:kcuser1"]
+            tags = ["tag:kcadmin","tag:kcuser1"] # Default tag
 
         token_url = "https://login.tailscale.com/api/v2/oauth/token"
         token_data = {
@@ -57,8 +57,9 @@ class IsolationManager:
                     }
                 }
             },
-            "expirySeconds": 3600  # 1 hour
+            "expirySeconds": 3600   # 1 hour
         }
+        # headers = {"Authorization": f"Bearer {access_token}"}
         key_resp = requests.post(key_url, json=payload, auth=(access_token, ''))
         key_resp.raise_for_status()
 
@@ -71,6 +72,7 @@ class IsolationManager:
         return auth_key
 
     def _get_default_interface(self):
+        """Find the interface with default route"""
         try:
             output = subprocess.check_output(["ip", "-4", "route", "show", "default"]).decode()
             for line in output.splitlines():
@@ -83,26 +85,15 @@ class IsolationManager:
         except Exception:
             return None
 
-    def _generate_unique_subnet(self, ns_name):
-        """
-        Generate a unique 192.168.x.0/24 subnet based on namespace name
-        Range: 192.168.32.0/24 → 192.168.255.0/24 (avoiding very common subnets)
-        """
-        # Create a deterministic hash from namespace name
-        h = hashlib.sha256(ns_name.encode()).hexdigest()
-        # Take first 8 bits → 0-255, but shift to 32-255 to avoid conflicts
-        third_octet = (int(h[:2], 16) % 224) + 32
-        subnet = f"192.168.{third_octet}.0/24"
-        host_ip = f"192.168.{third_octet}.1/24"
-        ns_ip = f"192.168.{third_octet}.2/24"
-        return subnet, host_ip, ns_ip
-
     def setup_namespace(self, ns_name):
-        """Create namespace + veth pair + NAT + default route"""
+        """Create namespace + veth pair + NAT + default route (with cleanup)"""
         logging.info(f"Setting up namespace {ns_name} with internet access...")
 
+        # Make interface names unique per namespace to avoid collisions
+        # Limit to 15 chars (standard linux interface name limit)
+        # veth-h-123456
         veth_host = f"veth-h-{ns_name[:6]}"
-        veth_ns = f"veth-n-{ns_name[:6]}"
+        veth_ns   = f"veth-n-{ns_name[:6]}"
 
         main_interface = self._get_default_interface()
         if not main_interface:
@@ -110,75 +101,109 @@ class IsolationManager:
 
         logging.info(f"Detected main interface: {main_interface}")
 
-        # Cleanup leftovers
+        # Cleanup any leftover interfaces
         for iface in [veth_host, veth_ns]:
             subprocess.run(["ip", "link", "delete", iface], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Cleanup namespace if it exists
         subprocess.run(["ip", "netns", "delete", ns_name], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        # Generate unique subnet
-        subnet, host_ip, ns_ip = self._generate_unique_subnet(ns_name)
-        logging.info(f"Using subnet {subnet} → host: {host_ip}, ns: {ns_ip}")
-
         cmds = [
+            # Create namespace
             ["ip", "netns", "add", ns_name],
+
+            # Create veth pair
             ["ip", "link", "add", veth_host, "type", "veth", "peer", "name", veth_ns],
+
+            # Move namespace end into namespace
             ["ip", "link", "set", veth_ns, "netns", ns_name],
-            ["ip", "netns", "exec", ns_name, "ip", "addr", "add", ns_ip, "dev", veth_ns],
+
+            # Configure IPs
+            ["ip", "netns", "exec", ns_name, "ip", "addr", "add", NS_IPV4, "dev", veth_ns],
             ["ip", "netns", "exec", ns_name, "ip", "link", "set", veth_ns, "up"],
-            ["ip", "addr", "add", host_ip, "dev", veth_host],
+            ["ip", "addr", "add", HOST_IPV4, "dev", veth_host],
             ["ip", "link", "set", veth_host, "up"],
+
+            # Enable loopback
             ["ip", "netns", "exec", ns_name, "ip", "link", "set", "lo", "up"],
+
+            # Enable IP forwarding
             ["sysctl", "-w", "net.ipv4.ip_forward=1"],
-            # NAT for this specific subnet
+
+            # Add NAT rule
             ["iptables", "-t", "nat", "-A", "POSTROUTING",
-             "-s", subnet,
+             "-s", "192.168.200.0/24",
              "-o", main_interface, "-j", "MASQUERADE"],
-            # Allow forwarding — insert at top
-            ["iptables", "-I", "FORWARD", "1", "-i", veth_host, "-j", "ACCEPT"],
-            ["iptables", "-I", "FORWARD", "1", "-o", veth_host, "-j", "ACCEPT"],
-            # Default route
-            ["ip", "netns", "exec", ns_name, "ip", "route", "add", "default", "via", host_ip.split('/')[0]],
+             
+            ## Allow forwarding (Insert at top to avoid being blocked by default DROP/REJECT)
+            #["iptables", "-I", "FORWARD", "1", "-i", veth_host, "-j", "ACCEPT"],
+            #["iptables", "-I", "FORWARD", "1", "-o", veth_host, "-j", "ACCEPT"],
+
+            # Default route inside namespace
+            ["ip", "netns", "exec", ns_name, "ip", "route", "add", "default", "via", "192.168.200.1"],
         ]
 
-        # Setup DNS via netns-aware resolv.conf
-        try:
-            netns_conf_dir = f"/etc/netns/{ns_name}"
-            os.makedirs(netns_conf_dir, exist_ok=True)
-            with open(f"{netns_conf_dir}/resolv.conf", "w") as f:
-                f.write("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
-            logging.info(f"DNS configured for namespace via /etc/netns/{ns_name}/resolv.conf")
-        except Exception as e:
-            logging.warning(f"Could not set up DNS config: {e}")
+        # # Setup DNS for the namespace
+        # # By creating /etc/netns/<name>/resolv.conf, ip netns exec will bind mount it over /etc/resolv.conf
+        # try:
+        #     netns_conf_dir = f"/etc/netns/{ns_name}"
+        #     os.makedirs(netns_conf_dir, exist_ok=True)
+        #     with open(f"{netns_conf_dir}/resolv.conf", "w") as f:
+        #         f.write("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
+        # except Exception as e:
+        #     logging.error(f"Failed to setup DNS: {e}")
+        #     raise
 
         for cmd in cmds:
             logging.info(f"Running: {' '.join(cmd)}")
             try:
-                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-                if result.stdout.strip():
-                    logging.debug(result.stdout.strip())
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
             except subprocess.CalledProcessError as e:
                 logging.error(f"Command failed: {' '.join(cmd)}\nStdout: {e.stdout}\nStderr: {e.stderr}")
                 raise
 
-        return subnet, veth_host
-
     def start_kdeconnect(self, ns_name, port=SERVER_PORT):
-        logging.info(f"Starting kdeconnect-webapp in namespace {ns_name} on port {port}")
+        """Runs kdeconnect-webapp-d inside the namespace"""
+        logging.info(f"Starting kdeconnect-webapp-d in namespace {ns_name} on admin port {port}")
+
+        # We assume kdeconnect-webapp-d is in the PATH as requested.
+        # --name MyFakeDevice --discovery-port 1717 --admin-port 8081
+        
+        # cmd = [
+        #     "ip", "netns", "exec", ns_name,
+        #     "kdeconnect-webapp-d",
+        #     "--name", "MyFakeDevice", 
+        #     "--discovery-port", "1717",
+        #     "--admin-port", str(port)
+        # ]
+
+        # cmd = [
+        #     "ip", "netns", "exec", ns_name,
+        #     "python3",
+        #     "-m", "http.server", 
+        #     "8080"
+        # ]
+        #
+
         cmd = [
             "ip", "netns", "exec", ns_name,
-            "python", "-m", "kdeconnect_webapp.server",
-            "--name", "MyFakeDevice",
+            "python","-m", "kdeconnect_webapp.server",
+            "--name", "MyFakeDevice", 
             "--discovery-port", "1717",
             "--admin-port", str(port)
         ]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        proc = subprocess.Popen(cmd)
         return proc
 
     def join_tailscale(self, ns_name, auth_key):
+        """Runs tailscaled + tailscale up inside the namespace"""
         logging.info(f"Joining {ns_name} to tailnet...")
+
         state_dir = f"/var/lib/tailscale/{ns_name}"
         socket_path = f"/tmp/tailscale-{ns_name}.sock"
-
+        
+        # Ensure state dir exists is handled by tailscaled usually, but creating parent path is good
         Path(state_dir).mkdir(parents=True, exist_ok=True)
 
         tailscaled_proc = subprocess.Popen([
@@ -187,9 +212,11 @@ class IsolationManager:
             "--tun=userspace-networking",
             f"--state={state_dir}/tailscaled.state",
             f"--socket={socket_path}",
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # "--verbose=1"
+        ])
 
-        time.sleep(5)  # give tailscaled more time to start
+        # Give tailscaled time to initialize
+        time.sleep(4)
 
         up_cmd = [
             "ip", "netns", "exec", ns_name,
@@ -201,12 +228,14 @@ class IsolationManager:
             "--accept-dns=false",
             f"--hostname={ns_name}",
         ]
-
+        
         up_result = subprocess.run(up_cmd, capture_output=True, text=True)
-        logging.info("tailscale up output:\n" + up_result.stdout)
 
+        logging.info("tailscale up output:")
+        logging.info(up_result.stdout)
         if up_result.returncode != 0:
-            logging.error("tailscale up failed:\n" + up_result.stderr)
+            logging.error("tailscale up failed:")
+            logging.error(up_result.stderr)
             raise RuntimeError("Failed to join tailnet")
 
         logging.info(f"Namespace {ns_name} joined to tailnet!")
@@ -214,7 +243,12 @@ class IsolationManager:
 
     def enable_funnel(self, ns_name):
         socket_path = f"/tmp/tailscale-{ns_name}.sock"
-        logging.info(f"Enabling funnel for {ns_name}")
+        
+        # Generate random UUID for hostname part to attempt to get a unique one if needed
+        # But tailscale usually handles hostnames. 
+        # The script used `enable_funnel_with_uuid` which did some guessing.
+        
+        logging.info(f"Requesting public URL funnel for {ns_name}")
 
         funnel_cmd = [
             "ip", "netns", "exec", ns_name,
@@ -225,36 +259,47 @@ class IsolationManager:
         ]
 
         result = subprocess.run(funnel_cmd, capture_output=True, text=True)
-        logging.info("Funnel output:\n" + result.stdout)
+        logging.info("Funnel output:")
+        logging.info(result.stdout)
+        logging.info(result.stderr)
 
         if result.returncode != 0:
-            logging.error("Funnel failed:\n" + result.stderr)
+            logging.error("Funnel failed:")
+            logging.error(result.stderr)
             raise RuntimeError("Failed to enable Funnel")
 
-        match = re.search(r'(https?://[^\s]+)', result.stdout + result.stderr)
+        # Extract URL
+        match = re.search(r'(https://[^\s]+)', result.stdout)
         if match:
-            url = match.group(1).rstrip('.')
-            logging.info(f"Funnel URL: {url}")
-            return url
+            return match.group(1)
+        
+        # If not found in stdout, it might be that it's already running or output different.
+        # We can try `tailscale funnel status` or just guess based on previous behavior
+        # But for now, let's try to fetch status
+        status_cmd = [
+             "ip", "netns", "exec", ns_name,
+             "tailscale", "--socket", socket_path,
+             "funnel", "status", "--json"
+        ]
+        # This might be too complex for now, let's fallback to constructing it if we can
+        # or just waiting a bit.
+        
+        # Fallback simplistic guess
+        return f"https://{ns_name}.{self.tailnet}.ts.net"
 
-        # Fallback
-        fallback = f"https://{ns_name}.{self.tailnet}.ts.net"
-        logging.warning(f"Could not parse funnel URL — using fallback: {fallback}")
-        return fallback
-
-    def cleanup(self, ns_name, subnet=None, veth_host=None):
+    def cleanup(self, ns_name):
+        """Cleanup namespace and related interfaces/rules"""
         logging.info(f"Cleaning up namespace {ns_name}")
+        
+        veth_host = f"veth-h-{ns_name[:6]}"
+        veth_ns   = f"veth-n-{ns_name[:6]}"
 
-        veth_host = veth_host or f"veth-h-{ns_name[:6]}"
-        veth_ns = f"veth-n-{ns_name[:6]}"
-
-        # Remove NAT rule (only if we know the subnet)
-        if subnet:
-            subprocess.run([
-                "iptables", "-t", "nat", "-D", "POSTROUTING",
-                "-s", subnet, "-j", "MASQUERADE"
-            ], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
+        # Remove NAT rule
+        subprocess.run([
+            "iptables", "-t", "nat", "-D", "POSTROUTING",
+            "-s", "192.168.200.0/24", "-j", "MASQUERADE"
+        ], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
         # Remove FORWARD rules
         subprocess.run(["iptables", "-D", "FORWARD", "-i", veth_host, "-j", "ACCEPT"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(["iptables", "-D", "FORWARD", "-o", veth_host, "-j", "ACCEPT"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -263,8 +308,8 @@ class IsolationManager:
         import shutil
         try:
             shutil.rmtree(f"/etc/netns/{ns_name}", ignore_errors=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Failed to remove DNS config: {e}")
 
         # Remove veth interfaces
         for iface in [veth_host, veth_ns]:
@@ -272,52 +317,3 @@ class IsolationManager:
 
         # Delete namespace
         subprocess.run(["ip", "netns", "delete", ns_name], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-
-# ────────────────────────────────────────────────
-#  Example usage / main
-# ────────────────────────────────────────────────
-
-if __name__ == "__main__":
-    # Replace with your real values
-    manager = IsolationManager(
-        client_id="your-client-id",
-        client_secret="your-client-secret",
-        tailnet="your-tailnet-name.ts.net"
-    )
-
-    ns_name = "test-ns-1"
-
-    try:
-        auth_key = manager.get_auth_key()
-
-        subnet, veth_host = manager.setup_namespace(ns_name)
-
-        # Start your service
-        kde_proc = manager.start_kdeconnect(ns_name, port=SERVER_PORT)
-
-        # Join Tailscale
-        ts_proc = manager.join_tailscale(ns_name, auth_key)
-
-        # Enable funnel
-        public_url = manager.enable_funnel(ns_name)
-        print("\n" + "="*60)
-        print(f"Public URL:  {public_url}")
-        print("="*60 + "\n")
-
-        print("Press Ctrl+C to stop...")
-        while True:
-            time.sleep(1)
-
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-
-    except Exception as e:
-        logging.exception("Fatal error")
-
-    finally:
-        if 'kde_proc' in locals():
-            kde_proc.terminate()
-        if 'ts_proc' in locals():
-            ts_proc.terminate()
-        manager.cleanup(ns_name, subnet=subnet, veth_host=veth_host)
