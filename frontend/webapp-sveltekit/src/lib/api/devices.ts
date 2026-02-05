@@ -22,4 +22,8 @@ export const devicesApi = {
     ping: (id: string) => apiRequest<void>(`/ping/${id}`, 'POST'),
 
     ring: (id: string) => apiRequest<void>(`/ring/${id}`, 'POST'),
+
+    sftpStart: (id: string) => apiRequest<void>(`/sftp/${id}`, 'POST'),
+
+    sftpBrowse: (id: string, path: string = "/") => apiRequest<{ files: any[], path: string }>(`/sftp/${id}/${encodeURIComponent(path)}`, 'GET'),
 };

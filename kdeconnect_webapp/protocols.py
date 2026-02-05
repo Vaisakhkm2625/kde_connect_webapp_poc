@@ -8,6 +8,8 @@ from subprocess import Popen
 from tempfile import NamedTemporaryFile
 from time import time
 
+import paramiko
+
 from twisted.internet import reactor
 from twisted.internet.protocol import ClientFactory, DatagramProtocol, Protocol
 from twisted.internet.reactor import callLater
@@ -41,6 +43,7 @@ class Webapp(LineReceiver):
 
   def __init__(self):
     self.address = None
+    self.sftp_client = None
 
   def connectionMade(self):
     self.transport.setTcpKeepAlive(1)
@@ -221,6 +224,22 @@ class Webapp(LineReceiver):
     else:  # TODO setup?
       pass
 
+
+
+  def _handleSftp(self, packet):
+    if not packet.get("ip") or not packet.get("port") or \
+      not packet.get("user") or not packet.get("password"):
+      return
+
+    try:
+      transport = paramiko.Transport((packet.get("ip"), int(packet.get("port"))))
+      transport.connect(username=packet.get("user"), password=packet.get("password"))
+      self.sftp_client = paramiko.SFTPClient.from_transport(transport)
+      info(f"SFTP connection established for {self.name}")
+    except Exception as e:
+      error(f"Failed to establish SFTP connection: {e}")
+      self.sftp_client = None
+
   def _handleShare(self, packet):
     if not packet.get("filename") or not packet.data.get("payloadSize") or \
       not packet.data.get("payloadTransferInfo", {}).get("port"):
@@ -288,6 +307,8 @@ class Webapp(LineReceiver):
           self._handleCommandRequest(packet)
         elif packet.isType(PacketType.SHARE):
           self._handleShare(packet)
+        elif packet.isType(PacketType.SFTP):
+          self._handleSftp(packet)
         else:
           warning(f"Discarding unsupported packet {packet.getType()} for {self.name}")
       else:

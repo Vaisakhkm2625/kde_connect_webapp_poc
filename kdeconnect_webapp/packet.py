@@ -13,6 +13,10 @@ class PacketType:
   RING = "kdeconnect.findmyphone.request"
   RUNCOMMAND = "kdeconnect.runcommand"
   RUNCOMMAND_REQUEST = "kdeconnect.runcommand.request"
+  RUNCOMMAND = "kdeconnect.runcommand"
+  RUNCOMMAND_REQUEST = "kdeconnect.runcommand.request"
+  SFTP = "kdeconnect.sftp"
+  SFTP_REQUEST = "kdeconnect.sftp.request"
   SHARE = "kdeconnect.share.request"
 
 
@@ -149,6 +153,12 @@ class Packet:
     packet = Packet(PacketType.RUNCOMMAND_REQUEST)
     packet.set("key", key)
 
+    return packet
+
+  @staticmethod
+  def createSftpRequest(startBrowsing=True):
+    packet = Packet(PacketType.SFTP_REQUEST)
+    packet.set("startBrowsing", startBrowsing)
     return packet
 
   @staticmethod

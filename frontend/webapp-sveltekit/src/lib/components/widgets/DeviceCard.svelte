@@ -11,9 +11,12 @@
     import type { Device } from "$lib/api/devices";
     import { devicesApi } from "$lib/api/devices";
     import toast from "svelte-french-toast";
+    import { createEventDispatcher } from "svelte";
 
     export let device: Device;
     export let onUpdate: () => void;
+
+    const dispatch = createEventDispatcher();
 
     let isLoading = false;
 
@@ -125,6 +128,13 @@
                 on:click={handleRing}
             >
                 Ring
+            </button>
+            <button
+                class="flex-1 py-1.5 text-xs bg-kde-card hover:bg-kde-border border border-kde-border rounded transition-colors"
+                disabled={!device.reachable}
+                on:click={() => dispatch("browse", device.identifier)}
+            >
+                Files
             </button>
             <button
                 class="px-3 py-1.5 text-xs bg-kde-danger/10 hover:bg-kde-danger text-kde-danger hover:text-white border border-kde-danger/20 rounded transition-colors"

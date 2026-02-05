@@ -4,9 +4,19 @@
     import { devicesApi, type Device } from "$lib/api/devices";
     import DeviceCard from "../widgets/DeviceCard.svelte";
     import toast from "svelte-french-toast";
+    import { windowManager } from "$lib/stores/windows";
 
     let devices = $state<Device[]>([]);
     let isLoading = $state(true);
+
+    function openFileBrowser(device: Device) {
+        windowManager.open(
+            `files-${device.identifier}`,
+            `Files - ${device.name}`,
+            "FileBrowser",
+            { deviceId: device.identifier },
+        );
+    }
 
     async function loadDevices() {
         try {
@@ -32,8 +42,8 @@
         <h2 class="text-lg font-semibold text-kde-text">Discovered Devices</h2>
         <button
             class="p-2 hover:bg-kde-border rounded-full transition-colors text-kde-text-dim hover:text-kde-text"
-            on:click={loadDevices}
             title="Refresh"
+            onclick={loadDevices}
         >
             <RefreshCw size={18} class={isLoading ? "animate-spin" : ""} />
         </button>
@@ -50,7 +60,7 @@
             <span>No devices found</span>
             <button
                 class="text-kde-blue hover:underline text-sm"
-                on:click={loadDevices}>Retry</button
+                onclick={loadDevices}>Retry</button
             >
         </div>
     {:else}
@@ -58,7 +68,11 @@
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto p-2"
         >
             {#each devices as device (device.identifier)}
-                <DeviceCard {device} onUpdate={loadDevices} />
+                <DeviceCard
+                    {device}
+                    onUpdate={loadDevices}
+                    on:browse={(e) => openFileBrowser(device)}
+                />
             {/each}
         </div>
     {/if}

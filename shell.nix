@@ -8,6 +8,7 @@ let
     pyopenssl
     requests
     twisted
+    paramiko
 
     # tailscale_integrated / Flask app dependencies
     flask

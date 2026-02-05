@@ -1,55 +1,98 @@
 <script lang="ts">
-    import { Folder, File, Download, Upload, Settings } from "lucide-svelte";
+    import {
+        Folder,
+        File,
+        Download,
+        Upload,
+        Settings,
+        ArrowLeft,
+        RefreshCw,
+    } from "lucide-svelte";
     import { devicesApi, type Device } from "$lib/api/devices";
     import toast from "svelte-french-toast";
+    import { onMount } from "svelte";
 
-    let devices = $state<Device[]>([]);
-    let selectedDeviceId = $state("");
-    let currentPath = $state("~/Downloads/kdeconnect");
-    let configMode = $state(false);
+    let { deviceId, initialPath = "/" } = $props<{
+        deviceId: string;
+        initialPath?: string;
+    }>();
 
-    // Mocks
-    let files = [
-        { name: "Document.pdf", type: "file", size: "2.4 MB" },
-        { name: "Photos", type: "folder", size: "-" },
-        { name: "Music", type: "folder", size: "-" },
-        { name: "notes.txt", type: "file", size: "12 KB" },
-    ];
+    let files = $state<any[]>([]);
+    let currentPath = $state(initialPath);
+    let isLoading = $state(false);
+    let error = $state<string | null>(null);
+    let isConnected = $state(false);
 
-    async function loadDeviceConfig() {
-        // API doesn't allow reading config back easily without listing devices again
-        // We assume devices list has path info
-        const res = await devicesApi.list();
-        devices = res.devices;
-        if (selectedDeviceId) {
-            const dev = devices.find((d) => d.identifier === selectedDeviceId);
-            if (dev?.path) currentPath = dev.path;
-        }
-    }
-
-    async function saveConfig() {
-        if (!selectedDeviceId) return toast.error("Select a device");
+    async function initSftp() {
+        isLoading = true;
+        error = null;
         try {
-            // apiRequest(`/share/${selectedDeviceId}`, 'PATCH', { path: currentPath })
-            // Need to add this method to devicesApi or client
-            // For now using fetch directly or extending api
-            // ... assuming devicesApi extension or generic call
-            // Let's assume we extended devicesApi or use client
-            await fetch(`/api/share/${selectedDeviceId}`, {
-                method: "PATCH",
-                body: JSON.stringify({ path: currentPath }),
-                headers: { "Content-Type": "application/json" },
-            });
-            toast.success("Receive path updated");
-            configMode = false;
-        } catch (e) {
-            toast.error("Failed to update path");
+            await devicesApi.sftpStart(deviceId);
+            isConnected = true;
+            await loadFiles(currentPath);
+        } catch (e: any) {
+            console.error(e);
+            error =
+                "Failed to establish SFTP connection. Ensure the device is reachable.";
+            toast.error(error);
+        } finally {
+            isLoading = false;
         }
     }
 
-    $effect(() => {
-        loadDeviceConfig();
+    async function loadFiles(path: string) {
+        isLoading = true;
+        error = null;
+        try {
+            const res = await devicesApi.sftpBrowse(deviceId, path);
+            files = res.files.sort((a, b) => {
+                if (a.isDirectory === b.isDirectory)
+                    return a.name.localeCompare(b.name);
+                return a.isDirectory ? -1 : 1;
+            });
+            currentPath = res.path;
+        } catch (e: any) {
+            console.error(e);
+            error = "Failed to load files.";
+            toast.error(error);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    function handleFileClick(file: any) {
+        if (file.isDirectory) {
+            const newPath =
+                currentPath === "/"
+                    ? `/${file.name}`
+                    : `${currentPath}/${file.name}`;
+            loadFiles(newPath);
+        } else {
+            toast("File downloading not implemented yet", { icon: "ℹ️" });
+        }
+    }
+
+    function handleUp() {
+        if (currentPath === "/") return;
+        const parent = currentPath.substring(0, currentPath.lastIndexOf("/"));
+        loadFiles(parent || "/");
+    }
+
+    onMount(() => {
+        if (deviceId) {
+            initSftp();
+        } else {
+            error = "No device specified";
+        }
     });
+
+    function formatSize(bytes: number) {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB", "TB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    }
 </script>
 
 <div class="h-full flex flex-col bg-kde-bg text-kde-text">
@@ -58,106 +101,74 @@
         class="h-10 border-b border-kde-border flex items-center px-2 gap-2 bg-kde-card"
     >
         <button
-            class="p-1.5 hover:bg-kde-border rounded text-kde-text-dim hover:text-kde-text {configMode
-                ? 'bg-kde-border text-kde-text'
-                : ''}"
-            title="Configuration"
-            on:click={() => (configMode = !configMode)}
+            class="p-1.5 hover:bg-kde-border rounded text-kde-text-dim hover:text-kde-text"
+            title="Up"
+            onclick={handleUp}
+            disabled={currentPath === "/"}
         >
-            <Settings size={18} />
+            <ArrowLeft size={18} />
         </button>
+        <button
+            class="p-1.5 hover:bg-kde-border rounded text-kde-text-dim hover:text-kde-text"
+            title="Refresh"
+            onclick={() => loadFiles(currentPath)}
+        >
+            <RefreshCw size={18} class={isLoading ? "animate-spin" : ""} />
+        </button>
+
         <div class="h-4 w-px bg-kde-border mx-1"></div>
+
         <div
-            class="flex-1 flex items-center gap-2 text-sm text-kde-text-dim px-2 bg-kde-bg border border-kde-border rounded h-7"
+            class="flex-1 flex items-center gap-2 text-sm text-kde-text-dim px-2 bg-kde-bg border border-kde-border rounded h-7 overflow-hidden whitespace-nowrap"
         >
             <Folder size={14} />
-            <span>/ Home / Downloads</span>
+            <span class="truncate">{currentPath}</span>
         </div>
     </div>
 
     <div class="flex-1 flex overflow-hidden">
-        <!-- Sidebar -->
-        <div
-            class="w-48 border-r border-kde-border p-2 bg-kde-card/50 flex flex-col gap-1 text-sm"
-        >
-            <div
-                class="p-1.5 rounded hover:bg-kde-border cursor-pointer flex items-center gap-2 text-kde-blue font-medium bg-kde-blue/10"
-            >
-                <Folder size={16} /> Home
-            </div>
-            <div
-                class="p-1.5 rounded hover:bg-kde-border cursor-pointer flex items-center gap-2 text-kde-text-dim"
-            >
-                <Download size={16} /> Downloads
-            </div>
-            <div class="mt-auto">
-                <label class="block text-xs text-kde-text-dim mb-1 px-1"
-                    >Device source</label
-                >
-                <select
-                    bind:value={selectedDeviceId}
-                    class="w-full bg-kde-bg border border-kde-border rounded text-xs p-1"
-                >
-                    <option value="">Select Device</option>
-                    {#each devices as dev}
-                        <option value={dev.identifier}>{dev.name}</option>
-                    {/each}
-                </select>
-            </div>
-        </div>
-
         <!-- Main Content -->
         <div class="flex-1 p-2 overflow-y-auto">
-            {#if configMode}
+            {#if error}
                 <div
-                    class="max-w-md mx-auto mt-10 p-6 bg-kde-card border border-kde-border rounded-lg shadow-sm"
+                    class="flex flex-col items-center justify-center h-full text-kde-danger gap-2"
                 >
-                    <h3 class="font-medium text-lg mb-4">
-                        Receive Files Configuration
-                    </h3>
-                    <p class="text-xs text-kde-text-dim mb-4">
-                        Configure where files received from the selected device
-                        should be saved on this server.
-                    </p>
-
-                    <label class="block text-sm mb-1">Target Device</label>
-                    <select
-                        bind:value={selectedDeviceId}
-                        class="w-full bg-kde-bg border border-kde-border rounded p-2 mb-4 text-sm"
+                    <span>{error}</span>
+                    <button
+                        class="px-3 py-1 bg-kde-card border border-kde-border rounded hover:bg-kde-border text-kde-text"
+                        onclick={initSftp}>Retry Connection</button
                     >
-                        <option value="">-- Select Device --</option>
-                        {#each devices as dev}
-                            <option value={dev.identifier}>{dev.name}</option>
-                        {/each}
-                    </select>
-
-                    <label class="block text-sm mb-1">Download Path</label>
-                    <div class="flex gap-2">
-                        <input
-                            bind:value={currentPath}
-                            type="text"
-                            class="flex-1 bg-kde-bg border border-kde-border rounded p-2 text-sm"
-                            placeholder="e.g. ~/Downloads"
-                        />
-                        <button
-                            class="bg-kde-blue text-white px-4 rounded hover:bg-kde-blue/90"
-                            on:click={saveConfig}>Save</button
-                        >
-                    </div>
+                </div>
+            {:else if isLoading && files.length === 0}
+                <div
+                    class="flex flex-col items-center justify-center h-full text-kde-text-dim"
+                >
+                    Loading...
+                </div>
+            {:else if files.length === 0}
+                <div
+                    class="flex flex-col items-center justify-center h-full text-kde-text-dim"
+                >
+                    Empty folder
                 </div>
             {:else}
-                <!-- File Grid Mock -->
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2"
                 >
                     {#each files as file}
                         <div
-                            class="p-2 flex flex-col items-center gap-2 rounded hover:bg-kde-border/50 cursor-pointer border border-transparent hover:border-kde-border/30 group"
+                            class="p-2 flex flex-col items-center gap-2 rounded hover:bg-kde-border/50 cursor-pointer border border-transparent hover:border-kde-border/30 group outline-none focus:bg-kde-border/50"
+                            role="button"
+                            tabindex="0"
+                            onclick={() => handleFileClick(file)}
+                            onkeydown={(e) =>
+                                e.key === "Enter" && handleFileClick(file)}
+                            title={file.name}
                         >
                             <div
                                 class="w-12 h-12 flex items-center justify-center text-kde-text-dim group-hover:text-kde-blue transition-colors"
                             >
-                                {#if file.type === "folder"}
+                                {#if file.isDirectory}
                                     <Folder
                                         size={40}
                                         fill="currentColor"
@@ -170,12 +181,13 @@
                             <span class="text-xs text-center truncate w-full"
                                 >{file.name}</span
                             >
+                            {#if !file.isDirectory}
+                                <span class="text-[10px] text-kde-text-dim"
+                                    >{formatSize(file.size)}</span
+                                >
+                            {/if}
                         </div>
                     {/each}
-                </div>
-
-                <div class="mt-8 text-center text-kde-text-dim text-sm italic">
-                    (Remote file browsing is not supported by the current API)
                 </div>
             {/if}
         </div>

@@ -22,6 +22,7 @@ from twisted.web.resource import Resource
 from kdeconnect_webapp import __version__
 from kdeconnect_webapp.exceptions import ApiError, DeviceNotReachableError, DeviceNotTrustedError, NotImplementedError2, \
   UnserializationError
+from kdeconnect_webapp.packet import Packet
 from kdeconnect_webapp.protocols import MAX_TCP_PORT, MIN_TCP_PORT, ShareSend
 
 
@@ -45,6 +46,8 @@ CHECKS = {
   ("PATCH", "command"): (True, True, True),
   ("PATCH", "share"): (True, False, False),
   ("POST", "custom"): (True, True, False),
+  ("POST", "sftp"): (True, True, False),
+  ("GET", "sftp"): (True, True, False),
 }
 
 
@@ -186,6 +189,10 @@ class API(Resource):
       return self._handleUpdateShare(identifier, data)
     elif resource == "custom" and method == "POST":
       return self._handleCustomPacket(client, data)
+    elif resource == "sftp" and method == "POST":
+      return self._handleSftpStart(client)
+    elif resource == "sftp" and method == "GET":
+      return self._handleSftpBrowse(client, key or "/")
 
     raise NotImplementedError2()
 
@@ -385,3 +392,25 @@ class API(Resource):
 
     client.sendCustom(data)
     return {}, 200
+
+  def _handleSftpStart(self, client):
+    packet = Packet.createSftpRequest()
+    client._sendPacket(packet)
+    return {}, 200
+
+  def _handleSftpBrowse(self, client, path="/"):
+    if not client.sftp_client:
+      raise ApiError("SFTP not connected", 400)
+
+    try:
+      files = []
+      for attr in client.sftp_client.listdir_attr(path):
+        files.append({
+          "name": attr.filename,
+          "size": attr.st_size,
+          "mtime": attr.st_mtime,
+          "isDirectory": attr.st_mode is None or (attr.st_mode & 0o40000) == 0o40000
+        })
+      return {"files": files, "path": path}, 200
+    except Exception as e:
+      raise ApiError(f"Failed to list files: {e}", 500)
