@@ -8,12 +8,12 @@
         ArrowLeft,
         RefreshCw,
     } from "lucide-svelte";
-    import { devicesApi, type Device } from "$lib/api/devices";
+    import { mockApi } from "$lib/api/mock";
     import toast from "svelte-french-toast";
     import { onMount } from "svelte";
 
     let { deviceId, initialPath = "/" } = $props<{
-        deviceId: string;
+        deviceId?: string;
         initialPath?: string;
     }>();
 
@@ -21,70 +21,58 @@
     let currentPath = $state(initialPath);
     let isLoading = $state(false);
     let error = $state<string | null>(null);
-    let isConnected = $state(false);
-
-    async function initSftp() {
-        isLoading = true;
-        error = null;
-        try {
-            await devicesApi.sftpStart(deviceId);
-            isConnected = true;
-            await loadFiles(currentPath);
-        } catch (e: any) {
-            console.error(e);
-            error =
-                "Failed to establish SFTP connection. Ensure the device is reachable.";
-            toast.error(error);
-        } finally {
-            isLoading = false;
-        }
-    }
 
     async function loadFiles(path: string) {
         isLoading = true;
         error = null;
         try {
-            const res = await devicesApi.sftpBrowse(deviceId, path);
-            files = res.files.sort((a, b) => {
-                if (a.isDirectory === b.isDirectory)
-                    return a.name.localeCompare(b.name);
-                return a.isDirectory ? -1 : 1;
+            console.log("Loading files from:", path);
+            const res = await mockApi.getFiles(path);
+            files = res.items.sort((a: any, b: any) => {
+                const aDir = a.type === "directory";
+                const bDir = b.type === "directory";
+                if (aDir === bDir) return a.name.localeCompare(b.name);
+                return aDir ? -1 : 1;
             });
-            currentPath = res.path;
+            currentPath = res.current_path;
         } catch (e: any) {
             console.error(e);
-            error = "Failed to load files.";
+            error = "Failed to load files: " + e.message;
             toast.error(error);
         } finally {
             isLoading = false;
         }
     }
 
+    onMount(() => {
+        loadFiles(initialPath);
+    });
+
+    // Keeping these functions compatible
     function handleFileClick(file: any) {
-        if (file.isDirectory) {
-            const newPath =
-                currentPath === "/"
-                    ? `/${file.name}`
-                    : `${currentPath}/${file.name}`;
-            loadFiles(newPath);
+        if (file.type === "directory") {
+            // Mock API returns full path in 'path' or we construct it
+            // Let's rely on the API returning 'path' or construct it.
+            // The mock server returns "path" in the item.
+            loadFiles(file.path);
         } else {
             toast("File downloading not implemented yet", { icon: "ℹ️" });
         }
     }
 
     function handleUp() {
-        if (currentPath === "/") return;
-        const parent = currentPath.substring(0, currentPath.lastIndexOf("/"));
-        loadFiles(parent || "/");
-    }
-
-    onMount(() => {
-        if (deviceId) {
-            initSftp();
-        } else {
-            error = "No device specified";
+        if (
+            currentPath === "/" ||
+            currentPath === "/home" ||
+            currentPath === ""
+        ) {
+            // Simple prevention of going too far up if desired, valid path usually starts with /
+            // Let's just try to go to parent.
         }
-    });
+        // Basic parent resolution
+        const parent = currentPath.split("/").slice(0, -1).join("/") || "/";
+        loadFiles(parent);
+    }
 
     function formatSize(bytes: number) {
         if (bytes === 0) return "0 B";
@@ -136,7 +124,8 @@
                     <span>{error}</span>
                     <button
                         class="px-3 py-1 bg-kde-card border border-kde-border rounded hover:bg-kde-border text-kde-text"
-                        onclick={initSftp}>Retry Connection</button
+                        onclick={() => loadFiles(currentPath)}
+                        >Retry Connection</button
                     >
                 </div>
             {:else if isLoading && files.length === 0}
@@ -168,7 +157,7 @@
                             <div
                                 class="w-12 h-12 flex items-center justify-center text-kde-text-dim group-hover:text-kde-blue transition-colors"
                             >
-                                {#if file.isDirectory}
+                                {#if file.type === "directory"}
                                     <Folder
                                         size={40}
                                         fill="currentColor"
@@ -181,7 +170,7 @@
                             <span class="text-xs text-center truncate w-full"
                                 >{file.name}</span
                             >
-                            {#if !file.isDirectory}
+                            {#if file.type !== "directory"}
                                 <span class="text-[10px] text-kde-text-dim"
                                     >{formatSize(file.size)}</span
                                 >

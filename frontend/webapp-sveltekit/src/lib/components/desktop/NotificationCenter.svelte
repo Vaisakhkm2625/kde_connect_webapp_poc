@@ -1,27 +1,24 @@
 <script lang="ts">
     import { X, BellOff, Bell } from "lucide-svelte";
     import { fly } from "svelte/transition";
+    import { onMount } from "svelte";
+    import { MOCK_API_BASE } from "$lib/api/mock";
+    import toast from "svelte-french-toast";
 
-    export let isOpen = false;
-    export let onClose: () => void;
+    let { isOpen = false, onClose } = $props<{
+        isOpen?: boolean;
+        onClose: () => void;
+    }>();
 
-    // Mock notifications for now
-    let notifications = [
-        {
-            id: 1,
-            title: "New Device Found",
-            app: "KDE Connect",
-            text: 'Device "Pixel 7" is available for pairing.',
-            time: "Just now",
-        },
-        {
-            id: 2,
-            title: "System Update",
-            app: "System",
-            text: "A new update is available.",
-            time: "10m ago",
-        },
-    ];
+    interface Notification {
+        id: number;
+        title: string;
+        app: string;
+        text: string;
+        time: string;
+    }
+
+    let notifications = $state<Notification[]>([]);
 
     function clearAll() {
         notifications = [];
@@ -30,6 +27,47 @@
     function removeNotification(id: number) {
         notifications = notifications.filter((n) => n.id !== id);
     }
+
+    onMount(() => {
+        console.log("Connecting to Notification Stream...");
+        const evtSource = new EventSource(
+            `${MOCK_API_BASE}/notifications/stream`,
+        );
+
+        evtSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log("New Notification:", data);
+
+                const newNotif: Notification = {
+                    id: Date.now(),
+                    title: data.title || "Notification",
+                    app: data.appName || "System",
+                    text: data.body || "",
+                    time: "Just now",
+                };
+
+                notifications = [newNotif, ...notifications];
+
+                // Also show a toast for immediate feedback
+                toast(data.title + (data.body ? ": " + data.body : ""), {
+                    icon: "🔔",
+                    position: "top-right",
+                });
+            } catch (e) {
+                console.error("Error parsing notification:", e);
+            }
+        };
+
+        evtSource.onerror = (err) => {
+            console.error("EventSource failed:", err);
+            // Reconnection is usually automatic for EventSource, but maybe log it.
+        };
+
+        return () => {
+            evtSource.close();
+        };
+    });
 </script>
 
 {#if isOpen}
@@ -52,7 +90,7 @@
                 <button
                     class="p-1.5 hover:bg-kde-border rounded-md text-kde-text-dim hover:text-kde-text transition-colors"
                     title="Close"
-                    on:click={onClose}
+                    onclick={onClose}
                 >
                     <X size={16} />
                 </button>
@@ -95,7 +133,7 @@
 
                         <button
                             class="absolute top-2 right-2 p-1 text-kde-text-dim opacity-0 group-hover:opacity-100 hover:text-kde-danger transition-all"
-                            on:click={() => removeNotification(notif.id)}
+                            onclick={() => removeNotification(notif.id)}
                         >
                             <X size={12} />
                         </button>
@@ -109,7 +147,7 @@
             <div class="p-3 border-t border-kde-border bg-kde-bg/30">
                 <button
                     class="w-full py-1.5 text-xs font-medium text-kde-text-dim hover:text-kde-text hover:bg-kde-border rounded transition-colors"
-                    on:click={clearAll}
+                    onclick={clearAll}
                 >
                     Clear All
                 </button>

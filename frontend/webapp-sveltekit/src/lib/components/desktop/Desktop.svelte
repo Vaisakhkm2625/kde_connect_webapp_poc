@@ -47,8 +47,10 @@
 >
     <!-- Desktop Area -->
     <div
-        class="absolute inset-0 z-0"
-        on:mousedown={() => {
+        class="absolute inset-0 z-0 outline-none"
+        role="button"
+        tabindex="0"
+        onmousedown={() => {
             /* clear focus */
         }}
     >
