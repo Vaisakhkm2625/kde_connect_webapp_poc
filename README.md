@@ -2,6 +2,14 @@
 
 KDE Connect Webapp is based on the [KDE Connect](https://community.kde.org/KDEConnect) protocol and allows a non-interactive environment (headless server) to send notifications to your devices via Rest API or a *simple* CLI
 
+
+```
+
+ python -m kdeconnect_webapp.server --name MyFakeDevice --discovery-port 1717 --admin-port 8081
+```
+
+
+
 > There are issues with the current versions of KDE Connect, see Troubleshooting.
 
 > Breaking changes in 0.4.0 `--admin-bind` and `--admin-socket` merged into `--admin-port`, `--receiver` is now `--discovery-port 1716`, `--transfer-port` and `--max-transfer-ports` has been removed as ports are allocated automatically, and `--service` has been deprecated and his systemd dependency removed.

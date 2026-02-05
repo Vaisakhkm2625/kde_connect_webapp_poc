@@ -9,3 +9,10 @@ build/
 dist/
 tests/
 venv/
+.env
+env
+server_private.key
+server_public.key
+client-isolated-env/test/client_privatekey
+client-isolated-env/test/client_publickey
+client-isolated-env/server.conf

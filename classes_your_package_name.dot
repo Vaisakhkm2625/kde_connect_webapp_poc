@@ -1,0 +1,4 @@
+digraph "classes_your_package_name" {
+rankdir=BT
+charset="utf-8"
+}

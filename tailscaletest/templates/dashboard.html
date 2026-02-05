@@ -1,0 +1,17 @@
+
+<!doctype html>
+<title>Dashboard</title>
+
+<h2>Welcome {{ user }}</h2>
+
+<form method="post">
+  <button type="submit">Generate Tailscale Auth Key</button>
+</form>
+
+{% if auth_key %}
+  <h3>Your Auth Key (copy now)</h3>
+  <pre>{{ auth_key }}</pre>
+{% endif %}
+
+<br>
+<a href="/logout">Logout</a>

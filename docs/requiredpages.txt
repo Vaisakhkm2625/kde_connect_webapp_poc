@@ -1,0 +1,20 @@
+
+6. (Detailed) Table of Contents (with page numbers). 
+7. List of Figures (with figure number, figure titles and page numbers) 
+8. List of Tables with table number, table title and page number.  
+9. Chapters 
+        a. Chapter 1:  Introduction (Page No.1 should start with Chapter 1) 
+        b. Chapter 2: Problem statement (what is the problem being addressed)
+        c. Chapter 3: Objective of the project
+        d. Chapter 4: Background of previous work done in the chosen area (Literature Review)
+        e. Chapter 5: Potential challenges & risks in doing the project
+        f. Chapter 6: Major functional and non-functional requirements, use case models etc.
+        g. Chapter 7: Resources needed for the project, including people, hardware, software, etc.
+        h. Chapter 8: Detailed Plan of Work done
+        i. Chapter 9: Future Work & Extension or Scope of improvements
+10. Inferences/Summary
+11. Conclusions and Recommendations (if any)
+12. Directions for future work (if any)
+13. Bibliography (if any) (Please refer to the sample format given below)
+14. References (if any) ((Please refer to the sample format given below)
+15. Appendices (if any)
