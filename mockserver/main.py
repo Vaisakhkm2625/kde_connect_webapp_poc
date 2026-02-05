@@ -213,6 +213,27 @@ def list_files():
         "items": items
     })
 
+@app.route('/api/files/download', methods=['GET'])
+def download_file():
+    """
+    Download a file.
+    Query param: `path`
+    """
+    req_path = request.args.get('path')
+    if not req_path:
+        return jsonify({"error": "Path required"}), 400
+        
+    if not os.path.exists(req_path):
+        return jsonify({"error": "File not found"}), 404
+        
+    if not os.path.isfile(req_path):
+        return jsonify({"error": "Not a file"}), 400
+        
+    # Serve the file
+    from flask import send_file
+    return send_file(req_path, as_attachment=False) # as_attachment=False allows browser preview
+
+
 # --- Clipboard Endpoints ---
 
 @app.route('/api/clipboard', methods=['GET'])

@@ -11,6 +11,10 @@ export const mockApi = {
         return res.json();
     },
 
+    getFileUrl(path: string) {
+        return `${MOCK_API_BASE}/files/download?path=${encodeURIComponent(path)}`;
+    },
+
     // Clipboard
     async getClipboard() {
         const res = await fetch(`${MOCK_API_BASE}/clipboard`);

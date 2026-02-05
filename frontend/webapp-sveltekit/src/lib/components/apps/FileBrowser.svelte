@@ -7,6 +7,9 @@
         Settings,
         ArrowLeft,
         RefreshCw,
+        X,
+        Eye,
+        EyeOff,
     } from "lucide-svelte";
     import { mockApi } from "$lib/api/mock";
     import toast from "svelte-french-toast";
@@ -21,6 +24,11 @@
     let currentPath = $state(initialPath);
     let isLoading = $state(false);
     let error = $state<string | null>(null);
+
+    let showHidden = $state(false);
+    let visibleFiles = $derived(
+        files.filter((f) => showHidden || !f.name.startsWith(".")),
+    );
 
     async function loadFiles(path: string) {
         isLoading = true;
@@ -48,16 +56,34 @@
         loadFiles(initialPath);
     });
 
+    // State for image preview
+    let previewUrl = $state<string | null>(null);
+    let previewName = $state<string>("");
+
+    function isImage(filename: string) {
+        const ext = filename.split(".").pop()?.toLowerCase();
+        return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext || "");
+    }
+
     // Keeping these functions compatible
     function handleFileClick(file: any) {
         if (file.type === "directory") {
-            // Mock API returns full path in 'path' or we construct it
-            // Let's rely on the API returning 'path' or construct it.
-            // The mock server returns "path" in the item.
             loadFiles(file.path);
         } else {
-            toast("File downloading not implemented yet", { icon: "ℹ️" });
+            if (isImage(file.name)) {
+                previewName = file.name;
+                previewUrl = mockApi.getFileUrl(file.path);
+            } else {
+                // Trigger download
+                const url = mockApi.getFileUrl(file.path);
+                window.open(url, "_blank");
+            }
         }
+    }
+
+    function closePreview() {
+        previewUrl = null;
+        previewName = "";
     }
 
     function handleUp() {
@@ -103,6 +129,17 @@
         >
             <RefreshCw size={18} class={isLoading ? "animate-spin" : ""} />
         </button>
+        <button
+            class="p-1.5 hover:bg-kde-border rounded text-kde-text-dim hover:text-kde-text"
+            title={showHidden ? "Hide Hidden Files" : "Show Hidden Files"}
+            onclick={() => (showHidden = !showHidden)}
+        >
+            {#if showHidden}
+                <Eye size={18} />
+            {:else}
+                <EyeOff size={18} />
+            {/if}
+        </button>
 
         <div class="h-4 w-px bg-kde-border mx-1"></div>
 
@@ -144,7 +181,7 @@
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2"
                 >
-                    {#each files as file}
+                    {#each visibleFiles as file}
                         <div
                             class="p-2 flex flex-col items-center gap-2 rounded hover:bg-kde-border/50 cursor-pointer border border-transparent hover:border-kde-border/30 group outline-none focus:bg-kde-border/50"
                             role="button"
@@ -181,4 +218,42 @@
             {/if}
         </div>
     </div>
+
+    {#if previewUrl}
+        <div
+            class="absolute inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            role="dialog"
+            tabindex="-1"
+            onclick={closePreview}
+            onkeydown={(e) => e.key === "Escape" && closePreview()}
+        >
+            <button
+                class="absolute top-4 right-4 text-white hover:text-red-400"
+                onclick={closePreview}
+            >
+                <X size={24} />
+            </button>
+            <div
+                class="relative max-w-full max-h-full flex flex-col items-center"
+            >
+                <img
+                    src={previewUrl}
+                    alt={previewName}
+                    class="max-w-full max-h-[80vh] object-contain rounded shadow-lg"
+                    onclick={(e) => e.stopPropagation()}
+                />
+                <div class="mt-4 flex gap-4">
+                    <button
+                        class="px-4 py-2 bg-kde-card text-kde-text rounded hover:bg-kde-border flex items-center gap-2"
+                        onclick={(e) => {
+                            e.stopPropagation();
+                            if (previewUrl) window.open(previewUrl, "_blank");
+                        }}
+                    >
+                        <Download size={16} /> Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>
