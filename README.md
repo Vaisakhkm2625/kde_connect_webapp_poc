@@ -1,8 +1,13 @@
+> This a proof of concept, heavily depended on tailscale, 
+> and mostly a fork of https://github.com/freundTech/pykdeconnect in the implimenation side kdeconnect protocol 
+---
 # KDE Connect Webapp 
 
-KDE Connect Webapp is based on the [KDE Connect](https://community.kde.org/KDEConnect) protocol and allows a non-interactive environment (headless server) to send notifications to your devices via Rest API or a *simple* CLI
+KDE Connect webapp is an attempt at providing a web inteface, where user can get most of the features of a native app, by just opening this a webpage and connecting to it using tailscale. so we don't have to install anything on that device.
 
+The original idea was to make a translation server between kde connect protocol to rest server (which https://github.com/freundTech/pykdeconnect already did) and provide a web interface on top of it, but i built as a collage project - collage required me to have complete auth system and provide as a website, I had to change design to provide as single server that can provide 100s of instances and connect all them to users through Tailscale and Linux Network namesapces. 
 
+> all the api keys in the project have been revoked - as a poc, i didn't bothered to have proper .env file or git commits.. hence keys are hard coded.
 ```
 
  python -m kdeconnect_webapp.server --name MyFakeDevice --discovery-port 1717 --admin-port 8081
@@ -15,6 +20,16 @@ KDE Connect Webapp is based on the [KDE Connect](https://community.kde.org/KDECo
 > Breaking changes in 0.4.0 `--admin-bind` and `--admin-socket` merged into `--admin-port`, `--receiver` is now `--discovery-port 1716`, `--transfer-port` and `--max-transfer-ports` has been removed as ports are allocated automatically, and `--service` has been deprecated and his systemd dependency removed.
 
 > Breaking changes between kdeconnect-webapp versions 0.1.x and 0.2.x on the client tool and rest api.
+
+# Interface
+
+<img width="1080" height="588" alt="image" src="https://github.com/user-attachments/assets/c4192fa7-75e9-4c95-85dc-52dd8362937b" />
+<img width="1080" height="559" alt="image" src="https://github.com/user-attachments/assets/dfe15aa5-2ee8-427e-a1bf-4202dc951c66" />
+
+
+# architecture
+
+<img width="1080" height="836" alt="image" src="https://github.com/user-attachments/assets/f862afd3-45b4-4c27-89fa-4710c23b277a" />
 
 ## Supported functionality (plugins):
 
@@ -37,6 +52,8 @@ venv/bin/pip install https://github.com/metallkopf/kdeconnect-webapp/releases/do
 # From source
 venv/bin/pip install git+https://github.com/metallkopf/kdeconnect-webapp.git@master#egg=kdeconnect-webapp
 ```
+
+
 
 ## Server
 
